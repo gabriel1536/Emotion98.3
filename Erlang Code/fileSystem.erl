@@ -9,7 +9,7 @@
 
 %START HERE
 inicio() ->
-    lists:map(fun(N) -> spawn(?MODULE, negro, [N]) end, lists:seq(1,5)),
+    lists:map(fun(N) -> spawn(?MODULE, worker, [N]) end, lists:seq(1,5)),
     server().
 
 %Mortadeleria
@@ -78,7 +78,7 @@ sovietanthem() ->
     Y = random:uniform(5),
     list_to_atom([$a | integer_to_list(Y)]).
 
-%Worker (negro esclavo colector de diamantes)
+%Worker (worker esclavo colector de diamantes)
 %---Argumentos:
 %* PidList: Lista de Pids de los demas workers
 %* Files:Lista de archivos
@@ -88,22 +88,22 @@ sovietanthem() ->
 %* MsgCounter: Contador de mensajes
 %* Safe: Indica si se envio el mensaje a otro worker, se la utiliza par aevitar envias
 % de manera erronea (errores de conteo)
-negro(L)->
+worker(L)->
     register(list_to_atom([$a | integer_to_list(L)]), self()),
     PidList = lists:filter(fun(X) -> nigga(L) =/= X end,[a1,a2,a3,a4,a5]),
-    negro(PidList, [], [], [], 0, 0, no).
-negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
+    worker(PidList, [], [], [], 0, 0, no).
+worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
     %Bloque de procesamiento
     if  length(RequestList) == 0 -> ok;
         true -> [{Command, Arguments, ClientIf} | Tail] = RequestList,
             case Command of
-                lsd ->  if  MsgCounter == 0 -> negro(PidList, Files, Files, RequestList, LastFD, 1 , no);
+                lsd ->  if  MsgCounter == 0 -> worker(PidList, Files, Files, RequestList, LastFD, 1 , no);
 
                             MsgCounter == 5 -> getUserName(ClientIf) ! {ok, merle(getFileList(Cacho))},
-                                                negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                             Safe == no      ->  lists:nth(MsgCounter, PidList) ! {giveList, self()},
-                                                negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
+                                                worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
 
                             true -> ok
                         end;
@@ -112,28 +112,28 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                 		NombreQueTeGuste = getFile(Files, name, FileNombre),
                 	if  MsgCounter == 0 ->
                     		case NombreQueTeGuste of
-                    			{error} -> negro(PidList, Files, Cacho, RequestList, LastFD, 1, no);
+                    			{error} -> worker(PidList, Files, Cacho, RequestList, LastFD, 1, no);
 
                     			{_, _, 0, _} -> getUserName(ClientIf) ! {ok , ""},
-                    							negro(PidList, removeFile(Files, FileNombre), Cacho, Tail, LastFD, 0, no);
+                    							worker(PidList, removeFile(Files, FileNombre), Cacho, Tail, LastFD, 0, no);
 
                     			{_, _, _NonZero, _} -> getUserName(ClientIf) ! {error , "El archivo esta abierto"},
-                    								  negro(PidList, Files, Cacho, Tail, LastFD, MsgCounter , no)
+                    								  worker(PidList, Files, Cacho, Tail, LastFD, MsgCounter , no)
                     		end;
                 		MsgCounter == 5 ->	case Cacho of
                 							    [verdad] -> getUserName(ClientIf) ! {ok, ""},
                 							    			io:format("aca??~n"),
-                						    				negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                						    				worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                 								[abierto] -> getUserName(ClientIf) ! {error, "El archivo esta abierto"},
-                						    				negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                						    				worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                 						    	_Else -> getUserName(ClientIf) ! {error, "El archivo no existe"},
-                						    			 negro(PidList, Files, [], Tail, LastFD, 0 , no)
+                						    			 worker(PidList, Files, [], Tail, LastFD, 0 , no)
                 						   	end;
 
                 		Safe == no -> lists:nth(MsgCounter, PidList) ! {delFile, FileNombre, self()},
-                                      negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
+                                      worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
                         true -> ok
                     end;
 
@@ -143,22 +143,22 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                                 T1 = existFile(Files , Name),
                                 case T1 of
                                     si ->   getUserName(ClientIf) ! {error , "El archivo ya existe"},
-                                            negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                            worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
-                                    _else -> negro(PidList, Files, [], RequestList, LastFD, 1 , no)
+                                    _else -> worker(PidList, Files, [], RequestList, LastFD, 1 , no)
                                 end;
                             MsgCounter == 5 ->
                                 T2 = existFile(Cacho , Name),
                                 case T2 of
                                     si ->   getUserName(ClientIf) ! {error , "El archivo ya existe"},
-                                            negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                            worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                     _else -> getUserName(ClientIf) ! {ok , []},
-                                    	     negro(PidList, createFile(Files , Name), [], Tail, LastFD, 0, no)
+                                    	     worker(PidList, createFile(Files , Name), [], Tail, LastFD, 0, no)
                                 end;
 
                             Safe == no ->   lists:nth(MsgCounter, PidList) ! {giveList, self()},
-                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
+                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
                             true -> ok
                         end;
 
@@ -171,23 +171,23 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                     				{_, _, 0, _} -> pidCast(PidList, {incFD}),
                                                     getUserName(ClientIf) ! {ok, "FD "++integer_to_list(LastFD + 1)},
                                                     %io:format("1: ~p~n 2: ~p~n", [Files, openFile(Name, Files, ClientIf, LastFD + 1)]),
-                                                    negro(PidList, openFile(Name, Files, ClientIf, LastFD + 1), Cacho, Tail, LastFD + 1, 0, no);
+                                                    worker(PidList, openFile(Name, Files, ClientIf, LastFD + 1), Cacho, Tail, LastFD + 1, 0, no);
 
                                     {_, _, _N, _} -> getUserName(ClientIf) ! {error, "El archivo ya esta abierto"},
-                                                    negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0, no);
 
-                                    _else        -> negro(PidList, Files, Cacho, RequestList, LastFD, 1, no)
+                                    _else        -> worker(PidList, Files, Cacho, RequestList, LastFD, 1, no)
                                 end;
                             MsgCounter == 5 ->  case Cacho of
                                                     [verdad, Fede] -> getUserName(ClientIf) ! {ok, "FD "++integer_to_list(Fede)},
-                                                            negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                            worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                                     [abierto, _Fede] -> getUserName(ClientIf) ! {error, "El archivo esta abierto"},
-                                                            negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                            worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                                     _Else -> getUserName(ClientIf) ! {error, "El archivo no existe"},
-                                                            negro(PidList, Files, [], Tail, LastFD, 0 , no)
+                                                            worker(PidList, Files, [], Tail, LastFD, 0 , no)
                                                 end;
                             Safe == no -> lists:nth(MsgCounter, PidList) ! {openFile, Name, self(), ClientIf},
-                                          negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
+                                          worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
                             true -> ok
                         end;
                 %[1,3,"Papa"]
@@ -198,34 +198,34 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                            % io:format("~p~n", [ClientIf == 1]),
                             case T1 of
                                 {_, _, 0, _} -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                 {_, _, _N, ClientIf} -> getUserName(ClientIf) ! {ok, ""},
                                                 %io:format("1: ~p~n 2: ~p~n", [Files, writeFile(Files, Fd, Size, Palabra)]),
-                                                negro(PidList, writeFile(Files, Fd, Size, Palabra), [], Tail, LastFD, 0, no);
+                                                worker(PidList, writeFile(Files, Fd, Size, Palabra), [], Tail, LastFD, 0, no);
 
                                 {_, _, _, _} -> getUserName(ClientIf) ! {error, "Acces Denied!"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0, no);
 
-                                _else        -> negro(PidList, Files, Cacho, RequestList, LastFD, 1, no)
+                                _else        -> worker(PidList, Files, Cacho, RequestList, LastFD, 1, no)
                             end;
                             MsgCounter == 5 ->
                                 case Cacho of
                                     [archCerrado] -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                       negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                       worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                                     [denied] -> getUserName(ClientIf) ! {error, "aseso denegado"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                                     [archWrt] ->  getUserName(ClientIf) ! {ok, ""},
                                                     %io:format("Asd~p~n", [Files]),
-                                                    negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                     _Elsa2 -> getUserName(ClientIf) ! {error, "No hay archivo"},
-                                              negro(PidList, Files, [], Tail, LastFD, 0 , no)
+                                              worker(PidList, Files, [], Tail, LastFD, 0 , no)
                                 end;
 
                             Safe == no -> lists:nth(MsgCounter, PidList) ! {writeFile, Fd, self(), ClientIf, Palabra, Size},
-                                          negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
+                                          worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter , si);
                             true -> ok
                         end;
 
@@ -234,44 +234,44 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                             T1 = getFile(Files, fd, Fd),
                             case T1 of
                                 {_, _, 0, _} -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                 {_, _, _N, ClientIf} -> Pinoccio = readFile(Files, Fd, Size),
                                                 case Pinoccio of
 
                                                     {ok, Peron} -> getUserName(ClientIf) ! {ok, integer_to_list(Size) ++ " " ++ Peron},
-                                                                    negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                                    worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                                     _Elsa3 -> getUserName(ClientIf) ! {error, "0 "},
-                                                                negro(PidList, Files, [], Tail, LastFD, 0, no)
+                                                                worker(PidList, Files, [], Tail, LastFD, 0, no)
                                                 end;
 
                                 {_, _, _, _} -> getUserName(ClientIf) ! {error, "Acces Denied!"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0, no);
 
-                                _else        -> negro(PidList, Files, Cacho, RequestList, LastFD, 1, no)
+                                _else        -> worker(PidList, Files, Cacho, RequestList, LastFD, 1, no)
                             end;
 
                             MsgCounter == 5 ->
                                 case Cacho of
                                     [archCerrado] -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                       negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                       worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                                     [toma, Blas] ->  getUserName(ClientIf) ! {ok, integer_to_list(Size) ++ " " ++ Blas},
-                                                    negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                                     [nada] -> getUserName(ClientIf) ! {error, "0 "},
-                                              negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                              worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                     [denied] -> getUserName(ClientIf) ! {error, "Acces Denied!"},
-                                                negro(PidList, Files, [], Tail, LastFD, 0, no);
+                                                worker(PidList, Files, [], Tail, LastFD, 0, no);
 
                                     _Elsa2 -> getUserName(ClientIf) ! {error, "Ola bb no te vayas ok? NO CIERRA"},
-                                              negro(PidList, Files, [], Tail, LastFD, 0 , no)
+                                              worker(PidList, Files, [], Tail, LastFD, 0 , no)
                                 end;
 
                             Safe == no ->   lists:nth(MsgCounter, PidList) ! {readFile , self() , Fd, ClientIf, Size},
-                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
+                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
                             true -> ok
                     end;
 
@@ -280,37 +280,37 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                             T1 = getFile(Files , fd , Fd),
                                 case T1 of
                                     {_, _, 0, _} -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                    negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
                                     {_, _, _N, ClientIf} -> getUserName(ClientIf) ! {ok, ""},
-                                                            negro(PidList, closeFile(Files, Fd), [], Tail, LastFD, 0 , no);
+                                                            worker(PidList, closeFile(Files, Fd), [], Tail, LastFD, 0 , no);
 
                                     {_, _, _N, _} -> getUserName(ClientIf) ! {error, "No pode cerrarlo vo eh"},
-                                                    negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0 , no);
 
-                                    _Elsa -> negro(PidList, Files, [], RequestList, LastFD, 1 , no)
+                                    _Elsa -> worker(PidList, Files, [], RequestList, LastFD, 1 , no)
                                 end;
                             MsgCounter == 5 ->
                                     io:format("papita~p~n", [Cacho]),
                                 case Cacho of
                                     [closedAlready] -> getUserName(ClientIf) ! {error, "El archivo esta cerrado"},
-                                                       negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                       worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                     [iClosedIt] ->  getUserName(ClientIf) ! {ok, ""},
-                                                    negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                    worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                     [ureNotAllowed] -> getUserName(ClientIf) ! {error, "No tienes permiso oye"},
-                                                       negro(PidList, Files, [], Tail, LastFD, 0 , no);
+                                                       worker(PidList, Files, [], Tail, LastFD, 0 , no);
                                     _Elsa2 -> getUserName(ClientIf) ! {error, "Ola bb no te vayas ok? NO CIERRA"},
-                                              negro(PidList, Files, [], Tail, LastFD, 0 , no)
+                                              worker(PidList, Files, [], Tail, LastFD, 0 , no)
                                 end;
 
                             Safe == no ->   lists:nth(MsgCounter, PidList) ! {closeFile , self() , Fd , ClientIf},
-                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
+                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, si);
                             true -> ok
                     end;
 
                 bye ->  justKill(ClientIf , PidList),
                         getUserName(ClientIf) ! {bye},
-                        negro(PidList, closeAllUserFile(Files , ClientIf), [], Tail, LastFD, 0 , no);
+                        worker(PidList, closeAllUserFile(Files , ClientIf), [], Tail, LastFD, 0 , no);
                 _Else -> ok
             end
     end,
@@ -318,16 +318,16 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
     receive
         {boludo, Com, [Args], Boludo} ->
             T = lists:append(RequestList, [{Com, Args, Boludo}]),
-            negro(PidList, Files, Cacho, T, LastFD, MsgCounter, Safe);
+            worker(PidList, Files, Cacho, T, LastFD, MsgCounter, Safe);
 
         {giveList, NegPid} -> NegPid ! {takeList, Files};
-        {takeList, FileReceived} -> negro(PidList, Files, lists:append(Cacho, FileReceived), RequestList, LastFD, MsgCounter + 1, no);
+        {takeList, FileReceived} -> worker(PidList, Files, lists:append(Cacho, FileReceived), RequestList, LastFD, MsgCounter + 1, no);
 
-        {incFD} -> negro(PidList, Files, Cacho, RequestList, LastFD + 1, MsgCounter, Safe);
+        {incFD} -> worker(PidList, Files, Cacho, RequestList, LastFD + 1, MsgCounter, Safe);
         {delFile, FileName, NegPid} -> HasFile = getFile(Files, name, FileName),
         							   case HasFile of
         							   		{_, _, 0, _} -> NegPid ! {isRemoved, verdad},
-        							   						negro(PidList, removeFile(Files, FileName), Cacho, RequestList, LastFD, MsgCounter, Safe);
+        							   						worker(PidList, removeFile(Files, FileName), Cacho, RequestList, LastFD, MsgCounter, Safe);
         							   		{_, _, _K, _} -> NegPid ! {isRemoved, abierto};
 
         							   		_Sino -> NegPid ! {isRemoved, falso}
@@ -336,27 +336,27 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
         {isRemoved, BooleanState} ->
         							case BooleanState of
         								verdad -> io:format("Si?¡?~n"),
-        								negro(PidList, Files, [verdad], RequestList, LastFD, 5, no);
-        								abierto -> negro(PidList, Files, [abierto], RequestList, LastFD, 5, no);
-        								_Nosi -> negro(PidList, Files, [noarchivo], RequestList, LastFD, MsgCounter + 1, no)
+        								worker(PidList, Files, [verdad], RequestList, LastFD, 5, no);
+        								abierto -> worker(PidList, Files, [abierto], RequestList, LastFD, 5, no);
+        								_Nosi -> worker(PidList, Files, [noarchivo], RequestList, LastFD, MsgCounter + 1, no)
         							 end;
 
         {closeFile , NegPid , TakeFd , Usr} -> HasFile = getFile(Files, fd, TakeFd),
                                                case HasFile of
                                                     {_, _, 0, _} -> NegPid ! {takeThisClose, alreadyClosed},
-                                                                    negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                                    worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
                                                     {_, _, _K, Usr} ->  NegPid ! {takeThisClose, okClose},
-                                                                        negro(PidList, closeFile(Files, TakeFd), Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                                        worker(PidList, closeFile(Files, TakeFd), Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                                     {_, _, _K, _Usr} -> NegPid ! {takeThisClose, cantCloseItDude};
                                                     _Sino -> NegPid ! {takeThisClose, error}
                                                 end;
 
         {takeThisClose, Argumento} -> case Argumento of
-                                           alreadyClosed -> negro(PidList, Files, [closedAlready], RequestList, LastFD, 5, no);
-                                           okClose -> negro(PidList, Files, [iClosedIt], RequestList, LastFD, 5, no);
-                                           cantCloseItDude -> negro(PidList, Files, [ureNotAllowed], RequestList, LastFD, 5, no);
-                                           _Otracosa -> negro(PidList, Files, [oiekhe], RequestList, LastFD, MsgCounter + 1, no)
+                                           alreadyClosed -> worker(PidList, Files, [closedAlready], RequestList, LastFD, 5, no);
+                                           okClose -> worker(PidList, Files, [iClosedIt], RequestList, LastFD, 5, no);
+                                           cantCloseItDude -> worker(PidList, Files, [ureNotAllowed], RequestList, LastFD, 5, no);
+                                           _Otracosa -> worker(PidList, Files, [oiekhe], RequestList, LastFD, MsgCounter + 1, no)
                                       end;
 
         {openFile, FileName, NegPid, Usr} -> HasFile = getFile(Files, name, FileName),
@@ -364,7 +364,7 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
                                        case HasFile of
                                             {_, _, 0, _} ->  NegPid ! {opened, yes, LastFD + 1},
                                                              pidCast(PidList, incFD),
-                                                             negro(PidList, openFile(FileName, Files, Usr, LastFD + 1), Cacho, RequestList, LastFD + 1, MsgCounter, Safe);
+                                                             worker(PidList, openFile(FileName, Files, Usr, LastFD + 1), Cacho, RequestList, LastFD + 1, MsgCounter, Safe);
                                             {_, _, _K, _} -> NegPid ! {opened, nopuedoamiwo, acatmabien};
 
                                             _Sino -> NegPid ! {opened, error, seeeeeeeeeeee}
@@ -374,66 +374,66 @@ negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe) ->
          %io:format("Haaa~n~p", [HasFile]),
                                        case HasFile of
                                             {_, _, 0, _} -> NegPid ! {writeAtom, nope},
-                                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                             {_, _, _K, Usr} -> NegPid ! {writeAtom, yes},
-                                                              negro(PidList, writeFile(Files, Fed, Saize, Palabras), Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                              worker(PidList, writeFile(Files, Fed, Saize, Palabras), Cacho, RequestList, LastFD, MsgCounter, Safe);
                                             {_, _, _, _} -> NegPid ! {writeAtom, denied},
-                                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                             _Sino -> NegPid ! {writeAtom, error},
-                                                     negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
+                                                     worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
                                         end;
 
         {writeAtom, Quehay} -> case Quehay of
-                                      nope -> negro(PidList, Files, [archCerrado], RequestList, LastFD, 5, no);
-                                      yes -> negro(PidList, Files, [archWrt], RequestList, LastFD, 5, no);
-                                      denied -> negro(PidList, Files, [denied], RequestList, LastFD, 5, no);
-                                      _Sinoes -> negro(PidList, Files, [khe], RequestList, LastFD, MsgCounter + 1, no)
+                                      nope -> worker(PidList, Files, [archCerrado], RequestList, LastFD, 5, no);
+                                      yes -> worker(PidList, Files, [archWrt], RequestList, LastFD, 5, no);
+                                      denied -> worker(PidList, Files, [denied], RequestList, LastFD, 5, no);
+                                      _Sinoes -> worker(PidList, Files, [khe], RequestList, LastFD, MsgCounter + 1, no)
                                   end;
 
         %readFile , self() , Fd, ClientIf, Size
         {readFile, NegPid, Fed, Usr, Saize} -> HasFile = getFile(Files, fd, Fed),
                                        case HasFile of
                                             {_, _, 0, _} -> NegPid ! {readAtom, nope, basura},
-                                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                             {_, _, _K, Usr} -> EstoNoEstaMal = readFile(Files, Fed, Saize),
                                                             case EstoNoEstaMal of
                                                                 {ok, Peronismo} -> NegPid ! {readAtom, yes, Peronismo},
-                                                                                negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                                                worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                                                 _Eles -> NegPid ! {readAtom, nope2, basura},
-                                                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
+                                                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
                                                             end;
 
                                             {_, _, _, _} -> NegPid ! {readAtom, denied, basura},
-                                                            negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
+                                                            worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe);
 
                                             _Sino -> NegPid ! {readAtom, error, basura},
-                                                     negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
+                                                     worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe)
                                         end;
 
         {readAtom, Quehay, Basurita} -> case Quehay of
-                                      nope -> negro(PidList, Files, [archCerrado], RequestList, LastFD, 5, no);
-                                      nope2 -> negro(PidList, Files, [nada], RequestList, LastFD, 5, no);
-                                      yes -> negro(PidList, Files, [toma, Basurita], RequestList, LastFD, 5, no);
-                                      denied -> negro(PidList, Files, [denied], RequestList, LastFD, 5, no);
-                                      _Sinoes -> negro(PidList, Files, [khe], RequestList, LastFD, MsgCounter + 1, no)
+                                      nope -> worker(PidList, Files, [archCerrado], RequestList, LastFD, 5, no);
+                                      nope2 -> worker(PidList, Files, [nada], RequestList, LastFD, 5, no);
+                                      yes -> worker(PidList, Files, [toma, Basurita], RequestList, LastFD, 5, no);
+                                      denied -> worker(PidList, Files, [denied], RequestList, LastFD, 5, no);
+                                      _Sinoes -> worker(PidList, Files, [khe], RequestList, LastFD, MsgCounter + 1, no)
                                   end;
 
 
         {opened, Quehay, Efe} -> case Quehay of
-                                      yes -> negro(PidList, Files, [verdad, Efe], RequestList, LastFD, 5, no);
-                                      nopuedoamiwo -> negro(PidList, Files, [abierto, Efe], RequestList, LastFD, 5, no);
-                                      _Sinoes -> negro(PidList, Files, [khe, Efe], RequestList, LastFD, MsgCounter + 1, no)
+                                      yes -> worker(PidList, Files, [verdad, Efe], RequestList, LastFD, 5, no);
+                                      nopuedoamiwo -> worker(PidList, Files, [abierto, Efe], RequestList, LastFD, 5, no);
+                                      _Sinoes -> worker(PidList, Files, [khe, Efe], RequestList, LastFD, MsgCounter + 1, no)
                                   end;
 
-        %{takeCloseFile , State} -> negro(PidList, Files, lists:append(Cacho, [State]), RequestList, LastFD, MsgCounter + 1, no);
+        %{takeCloseFile , State} -> worker(PidList, Files, lists:append(Cacho, [State]), RequestList, LastFD, MsgCounter + 1, no);
 
-        {bye , Usr} -> negro(PidList, closeAllUserFile(Files , Usr) , Cacho, RequestList, LastFD, MsgCounter, Safe)
+        {bye , Usr} -> worker(PidList, closeAllUserFile(Files , Usr) , Cacho, RequestList, LastFD, MsgCounter, Safe)
     end,
-    negro(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe).
+    worker(PidList, Files, Cacho, RequestList, LastFD, MsgCounter, Safe).
 
 %********************************************************************************%
 %                           Funciones auxiliares
